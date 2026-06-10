@@ -49,12 +49,6 @@ python servidor.py
 python cliente.py
 ```
 
-## Entrega
-
-- **Fecha límite de entrega:** 24/06/2026 (informe y código, por el Campus).
-- **Fecha límite de defensa:** 25/06/2026.
-- ⚠️ Sin defensa, el TP se considera **no entregado / desaprobado**. Cuenta como segundo parcial.
-
 ## Integrantes
 
 - _(completar)_
