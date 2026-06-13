@@ -4,20 +4,22 @@ import time
 
 # Variable global: Inventario de entradas
 entradas_disponibles = 5
+lock_inventario = threading.Lock()
+semaforo_clientes = threading.Semaphore(3)
 
 # --- NUEVO REQUERIMIENTO A: Sistema de Actualización ---
 # Bandera booleana para pausar el servidor.
-en_actualizacion = False
+en_actualizacion = threading.Event()
+en_actualizacion.set()
 
 def simular_actualizacion():
     """Hilo independiente que frena el servidor a los 2 segundos"""
-    global en_actualizacion
     time.sleep(2)
     print("\n[ALERTA] Iniciando actualización del sistema. Pausando ventas...")
-    en_actualizacion = True
+    en_actualizacion.clear()
     time.sleep(3) # La actualización dura 3 segundos
     print("[ALERTA] Actualización terminada. Reanudando ventas...\n")
-    en_actualizacion = False
+    en_actualizacion.set()
     
 # --- NUEVO REQUERIMIENTO B: Envío de Emails ---
 def enviar_email_confirmacion(direccion):
@@ -29,25 +31,24 @@ def enviar_email_confirmacion(direccion):
 
 def manejar_cliente(conexion, direccion):
     global entradas_disponibles
-    global en_actualizacion
     try:
-        while en_actualizacion:
-            pass # espera a que termine la actualización
+        en_actualizacion.wait()
 
         peticion = conexion.recv(1024).decode('utf-8')
         if peticion == "COMPRAR":
-            if entradas_disponibles > 0:
-                time.sleep(0.5)
-                entradas_disponibles -= 1
-                respuesta = f"Compra exitosa. Quedan {entradas_disponibles} entradas."
-       
-                enviar_email_confirmacion(direccion)
-            else:
-                respuesta = "Operación rechazada. Entradas agotadas."
-      
+            with semaforo_clientes:
+                with lock_inventario:
+                    if entradas_disponibles > 0:
+                        time.sleep(0.5)
+                        entradas_disponibles -= 1
+                        respuesta = f"Compra exitosa. Quedan {entradas_disponibles} entradas."
+                        enviar_email_confirmacion(direccion)
+                    else:
+                        respuesta = "Operación rechazada. Entradas agotadas."
+
         else:
             respuesta = "Petición no reconocida."
-      
+
         conexion.send(respuesta.encode('utf-8'))
     
     finally:
