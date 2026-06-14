@@ -33,8 +33,8 @@ def manejar_cliente(conexion, direccion):
     global entradas_disponibles
     try:
         en_actualizacion.wait()
-
         peticion = conexion.recv(1024).decode('utf-8')
+
         if peticion == "COMPRAR":
             with semaforo_clientes:
                 with lock_inventario:
@@ -42,17 +42,23 @@ def manejar_cliente(conexion, direccion):
                         time.sleep(0.5)
                         entradas_disponibles -= 1
                         respuesta = f"Compra exitosa. Quedan {entradas_disponibles} entradas."
-                        enviar_email_confirmacion(direccion)
                     else:
                         respuesta = "Operación rechazada. Entradas agotadas."
+
+               
+                if "exitosa" in respuesta:
+                    hilo_mail = threading.Thread(target=enviar_email_confirmacion,args=(direccion,),)
+                    hilo_mail.start()
 
         else:
             respuesta = "Petición no reconocida."
 
+      
         conexion.send(respuesta.encode('utf-8'))
-    
+
     finally:
         conexion.close()
+
 
 def iniciar_servidor():
     servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
